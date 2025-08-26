@@ -1,0 +1,4 @@
+Class ID to Label Mapping:
+0: zebra
+1: giraffe
+2: elephant

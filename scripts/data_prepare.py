@@ -11,6 +11,7 @@ import numpy as np
 import json
 import warnings
 import math
+import random
 
 import torch
 import torch.nn.functional as F
@@ -253,7 +254,83 @@ def prepare_visdrone():
         
         with open(join(root, 'split', split_dict[basename(sub_dir)[17:]]), 'w+') as f:
             f.writelines(data_paths)
+def prepare_wildlive():
+    
+    name_dict = {'0': 'zebra', '1': 'giraffe', '2': 'elephant'}
+    #split_dict = {'test-dev': 'test-dev.txt', 'val': 'val.txt', 'train': 'train.txt'}
+    split_dict = {'test': 'test.txt', 'val': 'val.txt', 'train': 'train.txt',"val_tiny": 'val_tiny.txt'}
+    root = opt.dataset
 
+    os.makedirs(join(root, 'split'), exist_ok=True)
+
+
+    #for split_name in ['train', 'val', 'test',"val_tiny"]:
+    for split_name in ['val_tiny']:
+        split_dir = join(root, split_name)
+        if not os.path.exists(split_dir):
+            continue
+            
+        print(f"Processing {split_name} split...")
+        
+        # Create labels directory
+        os.makedirs(join(split_dir, 'labels'), exist_ok=True)
+        
+        # Get all images in this split
+        images = sorted(glob(join(split_dir, 'images', '*.jpg')))
+        random.shuffle(images)
+
+        data_paths = []
+        for image_path in tqdm(images):
+            print("image_path",image_path)
+            image = cv2.imread(image_path)
+            height, width, _ = image.shape
+            label_path = image_path.replace('images', 'annotations').replace('.jpg', '.txt')
+            # if "masked" in label_path:  # avoid repeated processing
+            #     continue
+            assert exists(label_path)
+            label_lines = []
+            masked = False
+            # <bbox_left>,<bbox_top>,<bbox_width>,<bbox_height>,<score>,<object_category>,<truncation>,<occlusion>
+            for line in _readlines(label_path):
+                if line[-1] == ',':
+                    line = line[:-1]
+                x1, y1, w, h, score, cls, truncation, occlusion = list(map(int, line.split(',')))
+
+                if cls >= 0 and cls <= 2:  # Valid classes: 0=zebra, 1=giraffe, 2=elephant
+                    # Convert to YOLO format (center_x, center_y, width, height) normalized
+                #if cls in [0, 11]:
+                    #image[y1:y1 + h, x1:x1 + w, :] = 85
+                    #masked = True
+                #elif truncation < 2 and (occlusion < 2 or True):
+                    xc, yc = x1 + w / 2., y1 + h / 2.
+
+                    yolo_cls = cls 
+
+                    xc_norm = xc / width
+                    yc_norm = yc / height
+                    w_norm = w / width
+                    h_norm = h / height
+                    
+                    # YOLO format: class_id center_x center_y width height
+                    label_lines.append(('%d' + ' %.6f' * 4 + '\n') %
+                                     (yolo_cls, xc_norm, yc_norm, w_norm, h_norm))
+            if masked:
+                image_path = image_path.replace('.jpg', '_masked.jpg')
+                cv2.imwrite(image_path, image)
+            # for consistency
+            label_path = image_path.replace('images', 'labels').replace('.jpg', '.txt')
+            with open(label_path, 'w+') as f:
+                f.writelines(label_lines)
+
+            gen_mask(label_path, image, cls_ratio=True)
+
+            data_paths.append(image_path + '\n')
+        
+        split_file = join(root, 'split', split_dict[split_name])
+        with open(split_file, 'w+') as f:
+            f.writelines(data_paths)
+
+        print(f"Completed {split_name}: {len(data_paths)} images")
 
 def prepare_uavdt():
     root = opt.dataset
@@ -409,5 +486,7 @@ if __name__ == '__main__':
         prepare_uavdt()
     elif 'tinyperson' in dataset:
         prepare_tinyperson()
+    elif 'wildlive' in dataset:
+        prepare_wildlive()
     else:
         print('%s is coming soon.' % opt.dataset)

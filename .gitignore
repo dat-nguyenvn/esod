@@ -11,6 +11,10 @@ TinyPerson
 weights/
 weights
 runs/
+wandb/*
+ultra/*
+rm_folder/*
+WildLive/*
 
 # YOLOv5-specific GitIgnore ----------------------------------------------------------------------------------------------
 *.jpg

@@ -69,13 +69,15 @@ def train(hyp, opt, device, tb_writer=None):
     cuda = device.type != 'cpu'
     init_seeds(2 + rank)
     with open(opt.data) as f:
+        print("f*************",f)
         data_dict = yaml.safe_load(f)  # data dict
+        print("data_ddict",data_dict)
 
     # Logging- Doing this before checking the dataset. Might update data_dict
     loggers = {'wandb': None}  # loggers dict
     if rank in [-1, 0]:
         opt.hyp = hyp  # add hyperparameters
-        run_id = torch.load(weights).get('wandb_id') if weights.endswith('.pt') and os.path.isfile(weights) else None
+        run_id = torch.load(weights,weights_only=False).get('wandb_id') if weights.endswith('.pt') and os.path.isfile(weights) else None
         wandb_logger = WandbLogger(opt, save_dir.stem, run_id, data_dict)
         loggers['wandb'] = wandb_logger.wandb
         data_dict = wandb_logger.data_dict
@@ -92,7 +94,7 @@ def train(hyp, opt, device, tb_writer=None):
     if pretrained:
         with torch_distributed_zero_first(rank):
             weights = attempt_download(weights)  # download if not found locally
-        ckpt = torch.load(weights, map_location=device)  # load checkpoint
+        ckpt = torch.load(weights, map_location=device,weights_only=False)  # load checkpoint
         model = Model(opt.cfg or ckpt['model'].yaml, ch=3, nc=nc, anchors=hyp.get('anchors')).to(device)  # create
         exclude = ['anchor'] if (opt.cfg or hyp.get('anchors')) and not opt.resume and not opt.freeze else []  # exclude keys
         state_dict = ckpt['model'].float().state_dict()  # to FP32
@@ -499,8 +501,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--weights', type=str, default='yolov5s.pt', help='initial weights path')
     parser.add_argument('--cfg', type=str, default='', help='model.yaml path')
-    parser.add_argument('--data', type=str, default='data/coco128.yaml', help='data.yaml path')
-    parser.add_argument('--hyp', type=str, default='data/hyp.scratch.yaml', help='hyperparameters path')
+    parser.add_argument('--data', type=str, default='data/wildlive.yaml', help='data.yaml path')
+    parser.add_argument('--hyp', type=str, default='data/hyp.wildlive.yaml', help='hyperparameters path')
     parser.add_argument('--epochs', type=int, default=300)
     parser.add_argument('--batch-size', type=int, default=16, help='total batch size for all GPUs')
     parser.add_argument('--img-size', nargs='+', type=int, default=[640, 640], help='[train, test] image sizes')
@@ -519,7 +521,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='use torch.optim.Adam() optimizer')
     parser.add_argument('--sync-bn', action='store_true', help='use SyncBatchNorm, only available in DDP mode')
     parser.add_argument('--local_rank', type=int, default=-1, help='DDP parameter, do not modify')
-    parser.add_argument('--workers', type=int, default=8, help='maximum number of dataloader workers')
+    parser.add_argument('--workers', type=int, default=2, help='maximum number of dataloader workers')
     parser.add_argument('--project', default='runs/train', help='save to project/name')
     parser.add_argument('--entity', default=None, help='W&B entity')
     parser.add_argument('--name', default='exp', help='save to project/name')
@@ -529,7 +531,7 @@ if __name__ == '__main__':
     parser.add_argument('--label-smoothing', type=float, default=0.0, help='Label smoothing epsilon')
     parser.add_argument('--upload_dataset', action='store_true', help='Upload dataset as W&B artifact table')
     parser.add_argument('--bbox_interval', type=int, default=-1, help='Set bounding-box image logging interval for W&B')
-    parser.add_argument('--save_period', type=int, default=-1, help='Log model after every "save_period" epoch')
+    parser.add_argument('--save_period', type=int, default=1, help='Log model after every "save_period" epoch')
     parser.add_argument('--artifact_alias', type=str, default="latest", help='version of dataset artifact to be used')
     parser.add_argument('--addition', action='store_true', help='additional training')
     parser.add_argument('--freeze', action='store_true', help='freeze shadow backbone for fine-tuning')

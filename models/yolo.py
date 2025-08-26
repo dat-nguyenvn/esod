@@ -588,7 +588,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
         if m in [nn.Conv2d, Conv, GhostConv, Bottleneck, GhostBottleneck, SPP, ASPP, SPPF,
                  DWConv, DCN, RepLKConv, MixConv2d, Focus, Blur, CrossConv,
                  BottleneckCSP, C3, C3TR, MaskedC3TR, C2f, ResBlockLayer, RTMDetCSPLayer,
-                 HeatMapParser]:
+                 HeatMapParser, C3k2, C2PSA]:
             c2 = args[0]
             if c2 != no and 'GPViTAdapterSingleStageESOD' not in [_x[2] for _x in d['backbone']]:  # if not output
                 c2 = make_divisible(c2 * gw, 8)
@@ -597,7 +597,7 @@ def parse_model(d, ch):  # model_dict, input_channels(3)
                 args = [c2, *args[1:]]
             else:
                 args = [ch[f], c2, *args[1:]]
-                if m in [BottleneckCSP, C3, C3TR, MaskedC3TR, C2f, RTMDetCSPLayer]:
+                if m in [BottleneckCSP, C3, C3TR, MaskedC3TR, C2f, RTMDetCSPLayer, C3k2, C2PSA]:
                     args.insert(2, n)  # number of repeats
                     n = 1
         elif m is nn.BatchNorm2d:

@@ -27,7 +27,7 @@ lbucket = LatencyBucket()
 def test(data,
          weights=None,
          batch_size=32,
-         imgsz=640,
+         imgsz=1536,
          conf_thres=0.001,
          iou_thres=0.6,  # for NMS
          save_json=False,
